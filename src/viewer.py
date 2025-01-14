@@ -63,7 +63,7 @@ class Viewer:
         nans_count = sum(self._data[key].isna())
         print(f"nans: {nans_count}")
         if self._is_feature_categorical(key):
-            sns.displot(data=self._data, x=key).set_titles(key)
+            sns.displot(data=self._data, x=key, stat="probability").set_titles(key)
         else:
             sns.kdeplot(data=list(self._data[key].astype(float))).set_title(key)
 

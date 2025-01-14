@@ -2,3 +2,9 @@ numpy
 pandas
 seaborn
 torch
+scikit-learn
+pydantic
+imbalanced-learn
+tqdm
+xgboost
+joblib
