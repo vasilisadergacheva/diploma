@@ -13,5 +13,5 @@ class TorchModel(BaseModel):
 
     def train(
         self, X: tuple[Tensor, Tensor], y: Tensor, config: TrainConfig, trainer: Trainer
-    ) -> None:
-        pass
+    ) -> "TorchModel":
+        raise NotImplementedError

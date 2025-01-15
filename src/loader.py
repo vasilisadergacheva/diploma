@@ -79,7 +79,7 @@ class Loader:
     def load(
         self,
         add_mortality: bool = True,
-        add_pollution: bool = True,
+        add_pollution: bool = False,
         nans: list[Any] = ["EMPTY", "\\", "NILL", "`150", "6+2", "S"],
     ) -> pd.DataFrame:
         """Loads data."""

@@ -5,10 +5,10 @@ from enum import Enum
 from typing import Any, Union, Optional
 from datetime import timedelta
 from imblearn.over_sampling.base import BaseOverSampler
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 
 from src.viewer import Viewer
-from src.utils import ADMISSION_FEATURES
+from src.utils import ADMISSION_FEATURES, _extract_columns
 
 
 class DataType(Enum):
@@ -34,16 +34,29 @@ class Preprocessor:
         self._data = data
         self._target_type = target_type
 
-    @property
-    def features_to_create_target(self) -> list[str]:
+    @staticmethod
+    def features_to_create_target() -> list[str]:
         return [
             "OUTCOME",
             "MRD No.",
-        ] + ADMISSION_FEATURES["time"]
+            "D.O.A",
+            "D.O.D",
+            "DATE OF BROUGHT DEAD",
+        ]
 
-    def _add_target(self, data: pd.DataFrame, trial_period: int) -> pd.DataFrame:
+    @staticmethod
+    def targets() -> list[str]:
+        return [
+            "DURATION OF STAY",
+            "duration of intensive unit stay",
+        ]
+
+    def _add_target(
+        self, data: pd.DataFrame, trial_period: Optional[int] = None
+    ) -> pd.DataFrame:
         match self._target_type:
             case TargetType.DEATH:
+                assert not (trial_period is None)
                 data["target"] = (data["OUTCOME"] == "EXPIRY").astype(int)
                 data.loc[
                     (data["DATE OF BROUGHT DEAD"] + timedelta(days=trial_period))
@@ -75,43 +88,62 @@ class Preprocessor:
 
             data[key] = pd.factorize(data[key])[0].astype(int)
 
-        return (data[list(set(data.columns) - set(["target"]))], data[["target"]])
+        return _extract_columns(data=data)
 
     @staticmethod
     def _split_types(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         _viewer = Viewer(data)
         return data[_viewer.categorical_features], data[_viewer.numeric_features]
 
-    def preprocess(
+    def drop(
         self,
         trial_period: int = 30,
         to_drop: list[str] = ["EF", "BNP"],
         defaults: dict[str, Any] = {},
-        max_categories: int = 7,
-        data_type: DataType = DataType.PANDAS,
-        balance: Optional[BaseOverSampler] = SMOTE(random_state=42),
-        concatenate: bool = True,
-    ) -> tuple[Union[Any, tuple[Any, Any]], Any]:
-        """Preprocess data"""
+        dropna: bool = True,
+    ) -> pd.DataFrame:
+        assert self._target_type == TargetType.DEATH
 
         # removing what is required
         data = self._data.drop(
-            columns=list(set(to_drop) - set(self.features_to_create_target))
+            columns=list(set(to_drop) - set(Preprocessor.features_to_create_target()))
         )
 
         # add target
         self._add_target(data=data, trial_period=trial_period)
-        data.drop(columns=self.features_to_create_target, inplace=True)
+        data.drop(columns=self.features_to_create_target(), inplace=True)
 
         # replacing nans with default values
         for key, value in defaults:
             data[key] = data[key].fillna(value=value)
 
         # drop nans
-        data.dropna(inplace=True)
+        if dropna:
+            data.dropna(inplace=True)
+
+        return data
+
+    def preprocess(
+        self,
+        max_categories: int = 7,
+        data_type: DataType = DataType.PANDAS,
+        balance: Optional[BaseOverSampler] = RandomOverSampler(),
+        concatenate: bool = True,
+    ) -> tuple[Union[Any, tuple[Any, Any]], Any]:
+        """Preprocess data"""
+        # copy data
+        data = self._data.copy()
+
+        # recreate target after dropna if necessary
+        if self._target_type != TargetType.DEATH:
+            data = self._add_target(data=data)
+
+        # drop targets
+        data.drop(columns=Preprocessor.targets(), inplace=True)
 
         # convert types
         features, target = self._convert_type(data=data, max_categories=max_categories)
+        target = target.squeeze()
 
         # stratify dataset
         if balance and (TargetType.get_format(self._target_type) is int):

@@ -1,3 +1,5 @@
+import pandas as pd
+
 ADMISSION_FEATURES = {
     "polllution": [
         "AQI",
@@ -83,3 +85,17 @@ ADMISSION_FEATURES = {
     "demographic": ["AGE", "GENDER", "RURAL"],
     "admission": ["MRD No.", "TYPE OF ADMISSION-EMERGENCY/OPD", "OUTCOME"],
 }
+
+
+def _extract_columns(
+    data: pd.DataFrame, columns: list[str] = ["target"], save: bool = False
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    return (data if save else data[list(set(data.columns) - set(columns))]), data[
+        columns
+    ]
+
+
+def fbeta(precision: float, recall: float, beta: float = 1, eps: float = 1e-5) -> float:
+    if precision + recall < eps:
+        return 0
+    return (1 + (beta**2)) * (precision * recall) / ((beta**2) * precision + recall)

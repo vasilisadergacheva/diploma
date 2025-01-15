@@ -8,14 +8,20 @@ from src.metrics import Metrics, RegressionMetrics, ClassificationMetrics
 class BaseModel:
     """Abstract class for different approaches."""
 
-    def train(self, X: Any, y: Any, *args, **kwargs) -> None:
+    def train(self, X: Any, y: Any, *args, **kwargs) -> "BaseModel":
         raise NotImplementedError
 
     def predict(self, X: Any, *args, **kwargs) -> Any:
         raise NotImplementedError
 
+    def predict_proba(self, X: Any, *args, **kwargs) -> Any:
+        raise NotImplementedError
+
     def score(self, X: Any, y: Any, *args, **kwargs) -> Metrics:
-        raise
+        raise NotImplementedError
+
+    def clone(self) -> "BaseModel":
+        raise NotImplementedError
 
     def _metric_type(self, y: Any) -> Any:
         if isinstance(y, np.ndarray):
@@ -35,4 +41,5 @@ class BaseModel:
                 case _:
                     raise ValueError("Can't determine type")
         else:
+            print(y)
             raise ValueError("Can't determine type")
